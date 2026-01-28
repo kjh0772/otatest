@@ -82,12 +82,13 @@ function htmlPage({ title, body }) {
     <title>${escapeHtml(title)}</title>
     <style>
       :root { color-scheme: dark; }
-      body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans KR, sans-serif; background: #0b1220; color: #e5e7eb; }
+      /* 변경: 테스트용 "블랙 테마" 강화 */
+      body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans KR, sans-serif; background: #000000; color: #e5e7eb; }
       .wrap { max-width: 900px; margin: 0 auto; padding: 24px; }
-      .card { background: #0f172a; border: 1px solid #1f2a44; border-radius: 12px; padding: 16px; }
+      .card { background: #0b0b0b; border: 1px solid #1a1a1a; border-radius: 12px; padding: 16px; }
       .title { font-size: 18px; font-weight: 700; margin: 0 0 12px; }
       .muted { color: #9ca3af; font-size: 13px; }
-      pre { white-space: pre-wrap; word-break: break-word; background: #0b1220; border: 1px solid #1f2a44; padding: 12px; border-radius: 10px; }
+      pre { white-space: pre-wrap; word-break: break-word; background: #000000; border: 1px solid #1a1a1a; padding: 12px; border-radius: 10px; }
       a { color: #93c5fd; }
       .grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
       @media (min-width: 840px) { .grid { grid-template-columns: 1fr 1fr; } }

@@ -17,6 +17,24 @@
 npm start
 ```
 
+## "전체 커밋 내용" OTA 업데이트(선택)
+
+`ota.txt` 같은 단일 파일이 아니라, **리포 전체를 최신 커밋으로 자동 업데이트**하려면 `repo-updater.js`를 사용합니다.
+
+- **동작**: GitHub 브랜치 HEAD 커밋 SHA 폴링 → 변경 감지 → `git pull`(기본) → 종료(재시작 유도)
+- **라즈베리파이 권장**: systemd/pm2로 `npm run updater`를 항상 실행 (업데이트 시 자동 재시작)
+
+실행:
+
+```bash
+npm run updater
+```
+
+추가 환경변수:
+- `OTA_REPO_POLL_MS`: 리포 폴링 주기(ms). 미설정 시 `OTA_POLL_MS` 사용
+- `OTA_REPO_UPDATE_STRATEGY`: `pull`(기본) 또는 `reset`
+- `OTA_REPO_EXIT_ON_UPDATE`: `1`(기본)면 업데이트 후 exit=42로 종료(감시자가 재시작)
+
 ## 설정 (환경변수)
 
 > `.env.local` 등 환경설정 파일은 건드리지 않습니다. 필요 시 PowerShell에서 환경변수를 설정해 실행하세요.

@@ -7,6 +7,7 @@
   "main": "ota.js",
   "scripts": {
     "start": "node ota.js",
+    "updater": "node repo-updater.js",
     "test": "node --test"
   },
   "engines": {
