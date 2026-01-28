@@ -8,7 +8,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-const { buildGithubRawUrl } = require("./ota.js");
+const { buildGithubRawUrl, formatUpdateLog } = require("./ota.js");
 
 test("buildGithubRawUrl builds expected raw github url", () => {
   const url = buildGithubRawUrl({
@@ -18,5 +18,10 @@ test("buildGithubRawUrl builds expected raw github url", () => {
     path: "ota.txt"
   });
   assert.equal(url, "https://raw.githubusercontent.com/abc/repo/main/ota.txt");
+});
+
+test("formatUpdateLog formats a readable line", () => {
+  const line = formatUpdateLog({ from: "ota v1.1", to: "ota v1.2", at: "2026-01-28T00:00:00.000Z" });
+  assert.equal(line, '[ota] updated @ 2026-01-28T00:00:00.000Z: "ota v1.1" -> "ota v1.2"');
 });
 

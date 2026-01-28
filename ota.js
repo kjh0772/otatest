@@ -12,7 +12,15 @@ const http = require("node:http");
 const { setTimeout: delay } = require("node:timers/promises");
 
 /**
- * @typedef {{ text: string, etag?: string, lastCheckedAt?: string, lastUpdatedAt?: string, lastError?: string }} OtaState
+ * @typedef {{
+ *   text: string,
+ *   etag?: string,
+ *   lastCheckedAt?: string,
+ *   lastUpdatedAt?: string,
+ *   lastError?: string,
+ *   // 변경: 웹 화면에 보여줄 간단 로그(메모리 내 보관)
+ *   logs?: string[]
+ * }} OtaState
  */
 
 function env(name, fallback) {
@@ -106,6 +114,19 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function pushLog(state, line) {
+  // 변경: 최근 로그만 유지 (과도한 메모리 사용 방지)
+  if (!state.logs) state.logs = [];
+  state.logs.push(line);
+  const MAX = 50;
+  if (state.logs.length > MAX) state.logs.splice(0, state.logs.length - MAX);
+}
+
+function formatUpdateLog({ from, to, at }) {
+  // 변경: 콘솔/웹 공통 로그 포맷
+  return `[ota] updated @ ${at}: "${from}" -> "${to}"`;
+}
+
 function createDefaultState() {
   /** @type {OtaState} */
   return {
@@ -113,7 +134,8 @@ function createDefaultState() {
     etag: undefined,
     lastCheckedAt: undefined,
     lastUpdatedAt: undefined,
-    lastError: undefined
+    lastError: undefined,
+    logs: [] // 변경: 웹 화면 로그 표시용
   };
 }
 
@@ -132,7 +154,7 @@ function createConfig() {
   return { port, pollMs, enabled, owner, repo, branch, path, url };
 }
 
-async function pollGithubForever(state, config) {
+async function pollGithubForever(state, config, notifyUpdate) {
   if (!config.enabled || !config.url) return;
 
   // 변경: 최초 즉시 체크 후, 주기적으로 반복
@@ -143,14 +165,21 @@ async function pollGithubForever(state, config) {
       if (status === 200 && text != null) {
         const trimmed = text.replace(/\r\n/g, "\n").trimEnd();
         if (trimmed !== state.text) {
+          const from = state.text;
           state.text = trimmed;
           state.lastUpdatedAt = nowIso();
+          const line = formatUpdateLog({ from, to: state.text, at: state.lastUpdatedAt });
+          pushLog(state, line); // 변경: 웹 화면에 로그 남김
+          console.log(line); // 변경: 콘솔에 변경 감지 로그 출력
+          if (typeof notifyUpdate === "function") notifyUpdate({ text: state.text, at: state.lastUpdatedAt, from }); // 변경: 웹 클라이언트에 실시간 알림
         }
         state.etag = etag;
       }
       state.lastError = undefined;
     } catch (e) {
       state.lastError = e instanceof Error ? e.message : String(e);
+      // 변경: 에러도 콘솔로 바로 확인 가능하게 로그 출력
+      console.warn(`[ota] poll error @ ${nowIso()}: ${state.lastError}`);
     }
 
     await delay(config.pollMs);
@@ -158,8 +187,35 @@ async function pollGithubForever(state, config) {
 }
 
 function startServer(state, config) {
+  // 변경: SSE 클라이언트(브라우저)에게 변경을 즉시 푸시
+  /** @type {Set<import("node:http").ServerResponse>} */
+  const sseClients = new Set();
+  function broadcast(eventName, data) {
+    const payload = `event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`;
+    for (const client of sseClients) {
+      try {
+        client.write(payload);
+      } catch {
+        sseClients.delete(client);
+      }
+    }
+  }
+
   const server = http.createServer((req, res) => {
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+
+    if (url.pathname === "/events") {
+      // 변경: Server-Sent Events (페이지 새로고침 없이 자동 갱신/로그)
+      res.writeHead(200, {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        "Connection": "keep-alive"
+      });
+      res.write(`event: hello\ndata: ${JSON.stringify({ at: nowIso(), text: state.text })}\n\n`);
+      sseClients.add(res);
+      req.on("close", () => sseClients.delete(res));
+      return;
+    }
 
     if (url.pathname === "/health") {
       res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
@@ -182,6 +238,7 @@ function startServer(state, config) {
             lastCheckedAt: state.lastCheckedAt,
             lastUpdatedAt: state.lastUpdatedAt,
             lastError: state.lastError,
+            logs: state.logs, // 변경: 최근 로그 노출
             github: config.enabled
               ? { owner: config.owner, repo: config.repo, branch: config.branch, path: config.path, url: config.url }
               : { enabled: false }
@@ -203,14 +260,14 @@ function startServer(state, config) {
             <p class="title">OTA 테스트 웹서버</p>
             <p class="muted">
               GitHub 파일 변경을 감지하면 아래 텍스트가 자동으로 업데이트됩니다.
-              (엔드포인트: <a href="/version">/version</a>, 상태: <a href="/status">/status</a>)
+              (엔드포인트: <a href="/version">/version</a>, 상태: <a href="/status">/status</a>, 이벤트: <a href="/events">/events</a>)
             </p>
           </div>
           <div style="height:12px"></div>
           <div class="grid">
             <div class="card">
               <p class="title">현재 OTA 텍스트</p>
-              <pre>${escapeHtml(state.text)}</pre>
+              <pre id="otaText">${escapeHtml(state.text)}</pre>
             </div>
             <div class="card">
               <p class="title">상태</p>
@@ -228,6 +285,41 @@ function startServer(state, config) {
               )}</pre>
             </div>
           </div>
+          <div style="height:12px"></div>
+          <div class="card">
+            <p class="title">변경 로그</p>
+            <pre id="otaLog">${escapeHtml((state.logs || []).join("\n"))}</pre>
+            <p class="muted">페이지를 켜둔 상태에서 GitHub에 push하면, SSE로 즉시 갱신됩니다.</p>
+          </div>
+          <script>
+            // 변경: SSE로 텍스트/로그를 자동 갱신 (새로고침 불필요)
+            (function () {
+              var textEl = document.getElementById('otaText');
+              var logEl = document.getElementById('otaLog');
+              if (!textEl || !logEl) return;
+
+              function appendLog(line) {
+                var cur = logEl.textContent || '';
+                logEl.textContent = cur ? (cur + '\\n' + line) : line;
+              }
+
+              try {
+                var es = new EventSource('/events');
+                es.addEventListener('hello', function (e) {
+                  // 초기 연결 이벤트
+                });
+                es.addEventListener('ota_update', function (e) {
+                  try {
+                    var data = JSON.parse(e.data || '{}');
+                    if (typeof data.text === 'string') textEl.textContent = data.text;
+                    if (typeof data.log === 'string') appendLog(data.log);
+                  } catch (_) {}
+                });
+              } catch (_) {
+                appendLog('[ota] SSE 연결 실패: 브라우저/네트워크 환경을 확인하세요.');
+              }
+            })();
+          </script>
         `
       })
     );
@@ -243,15 +335,23 @@ function startServer(state, config) {
       console.log(`[ota] poll interval: ${config.pollMs}ms`);
     }
   });
+
+  // 변경: 외부에서 변경 알림 호출 가능하게 반환
+  return {
+    notifyUpdate: ({ text, at, from }) => {
+      const line = formatUpdateLog({ from, to: text, at });
+      broadcast("ota_update", { text, at, from, log: line });
+    }
+  };
 }
 
 async function main() {
   const state = createDefaultState();
   const config = createConfig();
 
-  startServer(state, config);
+  const { notifyUpdate } = startServer(state, config); // 변경: SSE 알림 연동
   // 변경: 서버는 즉시 띄우고, 폴링은 백그라운드로 지속 수행
-  pollGithubForever(state, config).catch((e) => console.error("[ota] poll loop crashed", e));
+  pollGithubForever(state, config, notifyUpdate).catch((e) => console.error("[ota] poll loop crashed", e));
 }
 
 // 변경: 테스트/모듈 import 시 자동 실행 방지 (직접 실행일 때만 main 실행)
@@ -267,6 +367,8 @@ module.exports = {
   buildGithubRawUrl,
   createConfig,
   createDefaultState,
-  fetchTextWithEtag
+  fetchTextWithEtag,
+  // 변경: 테스트용 export
+  formatUpdateLog
 };
 
