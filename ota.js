@@ -82,13 +82,13 @@ function htmlPage({ title, body }) {
     <title>${escapeHtml(title)}</title>
     <style>
       :root { color-scheme: dark; }
-      /* 변경: 테스트용 "블랙 테마" 강화 */
-      body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans KR, sans-serif; background: #000000; color: #e5e7eb; }
+      /* 변경: 테스트용 "노란 배경" 테마 */
+      body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans KR, sans-serif; background: #ffeb3b; color: #0b0b0b; }
       .wrap { max-width: 900px; margin: 0 auto; padding: 24px; }
-      .card { background: #0b0b0b; border: 1px solid #1a1a1a; border-radius: 12px; padding: 16px; }
+      .card { background: rgba(0,0,0,0.88); border: 1px solid rgba(0,0,0,0.65); border-radius: 12px; padding: 16px; color: #f3f4f6; }
       .title { font-size: 18px; font-weight: 700; margin: 0 0 12px; }
-      .muted { color: #9ca3af; font-size: 13px; }
-      pre { white-space: pre-wrap; word-break: break-word; background: #000000; border: 1px solid #1a1a1a; padding: 12px; border-radius: 10px; }
+      .muted { color: rgba(243,244,246,0.78); font-size: 13px; }
+      pre { white-space: pre-wrap; word-break: break-word; background: rgba(0,0,0,0.92); border: 1px solid rgba(255,255,255,0.08); padding: 12px; border-radius: 10px; color: #f9fafb; }
       a { color: #93c5fd; }
       .grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
       @media (min-width: 840px) { .grid { grid-template-columns: 1fr 1fr; } }
@@ -252,7 +252,8 @@ function startServer(state, config) {
     }
 
     // 기본 페이지
-    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    // 변경: 테마/HTML 캐시로 인한 “안 바뀜” 방지
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
     res.end(
       htmlPage({
         title: "OTA 테스트",

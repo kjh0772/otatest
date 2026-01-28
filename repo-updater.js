@@ -77,6 +77,18 @@ function runGit(args) {
   });
 }
 
+function runPostUpdateCmd(cmd) {
+  // 변경: 업데이트 직후 서버 재시작 등 후처리 훅(선택)
+  return new Promise((resolve, reject) => {
+    const child = spawn(cmd, { stdio: "inherit", shell: true });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`post-update cmd 실패 (exit=${code})`));
+    });
+  });
+}
+
 async function updateWorkingTree(strategy, branch) {
   if (strategy === "reset") {
     // 변경: 로컬 변경이 없다는 전제에서 가장 확실하게 원격과 동일화
@@ -96,6 +108,7 @@ async function main() {
   const pollMs = toInt(env("OTA_REPO_POLL_MS", env("OTA_POLL_MS", "5000")), 5000);
   const strategy = env("OTA_REPO_UPDATE_STRATEGY", "pull"); // pull | reset
   const exitOnUpdate = env("OTA_REPO_EXIT_ON_UPDATE", "1") !== "0";
+  const postUpdateCmd = env("OTA_REPO_POST_UPDATE_CMD", "");
 
   if (!owner || !repo) {
     console.error("[repo-updater] OTA_GH_OWNER / OTA_GH_REPO 가 필요합니다.");
@@ -107,6 +120,7 @@ async function main() {
   console.log(`[repo-updater] tracking repo: ${owner}/${repo} (${branch})`);
   console.log(`[repo-updater] poll interval: ${pollMs}ms`);
   console.log(`[repo-updater] update strategy: ${strategy}`);
+  if (postUpdateCmd) console.log(`[repo-updater] post-update cmd: ${postUpdateCmd}`);
 
   let lastSha = null;
 
@@ -122,6 +136,12 @@ async function main() {
         await updateWorkingTree(strategy, branch);
         console.log(`[repo-updater] update complete @ ${nowIso()}`);
         lastSha = sha;
+
+        if (postUpdateCmd) {
+          console.log("[repo-updater] running post-update cmd...");
+          await runPostUpdateCmd(postUpdateCmd);
+          console.log(`[repo-updater] post-update cmd complete @ ${nowIso()}`);
+        }
 
         if (exitOnUpdate) {
           console.log("[repo-updater] exiting to allow supervisor restart. (exit=42)");

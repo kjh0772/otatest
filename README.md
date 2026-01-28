@@ -34,6 +34,7 @@ npm run updater
 - `OTA_REPO_POLL_MS`: 리포 폴링 주기(ms). 미설정 시 `OTA_POLL_MS` 사용
 - `OTA_REPO_UPDATE_STRATEGY`: `pull`(기본) 또는 `reset`
 - `OTA_REPO_EXIT_ON_UPDATE`: `1`(기본)면 업데이트 후 exit=42로 종료(감시자가 재시작)
+- `OTA_REPO_POST_UPDATE_CMD`: (선택) 업데이트 직후 실행할 명령어 (예: 서버 재시작)
 
 ## 설정 (환경변수)
 
