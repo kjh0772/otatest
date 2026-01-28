@@ -236,6 +236,7 @@ function startServer(state, config) {
         JSON.stringify(
           {
             text: state.text,
+            serverTime: nowIso(), // 변경: 현재시각 출력 (테스트 업데이트용)
             lastCheckedAt: state.lastCheckedAt,
             lastUpdatedAt: state.lastUpdatedAt,
             lastError: state.lastError,
@@ -264,6 +265,7 @@ function startServer(state, config) {
               GitHub 파일 변경을 감지하면 아래 텍스트가 자동으로 업데이트됩니다.
               (엔드포인트: <a href="/version">/version</a>, 상태: <a href="/status">/status</a>, 이벤트: <a href="/events">/events</a>)
             </p>
+            <p class="muted" style="margin-top:8px">서버 시각: <strong>${escapeHtml(nowIso())}</strong></p>
           </div>
           <div style="height:12px"></div>
           <div class="grid">
