@@ -230,6 +230,13 @@ function startServer(state, config) {
       return;
     }
 
+    // 변경: 현재시각 전용 엔드포인트 (코드 갱신 여부 확인용)
+    if (url.pathname === "/time") {
+      res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" });
+      res.end(nowIso());
+      return;
+    }
+
     if (url.pathname === "/status") {
       res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
       res.end(
@@ -263,9 +270,10 @@ function startServer(state, config) {
             <p class="title">OTA 테스트 웹서버</p>
             <p class="muted">
               GitHub 파일 변경을 감지하면 아래 텍스트가 자동으로 업데이트됩니다.
-              (엔드포인트: <a href="/version">/version</a>, 상태: <a href="/status">/status</a>, 이벤트: <a href="/events">/events</a>)
+              (엔드포인트: <a href="/version">/version</a>, <a href="/time">/time</a>, 상태: <a href="/status">/status</a>, 이벤트: <a href="/events">/events</a>)
             </p>
-            <p class="muted" style="margin-top:8px">서버 시각: <strong>${escapeHtml(nowIso())}</strong></p>
+            <p class="title" style="font-size:14px; margin-top:12px; margin-bottom:0">서버 시각 (현재)</p>
+            <pre style="margin:4px 0 0; padding:8px; font-size:13px" id="serverTime">${escapeHtml(nowIso())}</pre>
           </div>
           <div style="height:12px"></div>
           <div class="grid">
