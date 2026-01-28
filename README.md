@@ -17,12 +17,62 @@
 npm start
 ```
 
-## "전체 커밋 내용" OTA 업데이트(선택)
+## 라즈베리파이: 한 번만 설정하면, 이후엔 git push만 하면 됨
+
+**당신은 PC에서 git push만 하고**, 라즈베리파이에서는 **수동 재시작 없이** pull + 서버 재시작이 자동으로 되게 하려면, Pi에서 **아래를 한 번만** 진행하세요.
+
+### 1) 프로젝트 클론 및 경로 확인
+
+```bash
+cd ~
+git clone https://github.com/kjh0772/otatest.git
+cd otatest
+```
+
+경로가 `/home/pi/otatest`가 아니면 아래 단계에서 해당 경로로 바꿉니다.
+
+### 2) systemd 서비스 설치
+
+```bash
+# 유닛 파일 복사 (경로/유저가 다르면 아래에서 수정)
+sudo cp systemd/ota.service /etc/systemd/system/
+sudo cp systemd/ota-updater.service /etc/systemd/system/
+```
+
+`/etc/systemd/system/ota.service`와 `ota-updater.service`를 열어 **WorkingDirectory**, **User**, **Environment** 값을 본인 Pi 경로/계정/리포에 맞게 수정합니다.
+
+### 3) 재시작 명령 비밀번호 없이 허용 (한 번만)
+
+updater가 `sudo systemctl restart ota`를 실행하려면, pi 계정에 해당 명령만 NOPASSWD로 허용합니다.
+
+```bash
+sudo visudo
+```
+
+맨 아래에 한 줄 추가 (저장 후 종료):
+
+```
+pi ALL=(ALL) NOPASSWD: /bin/systemctl restart ota
+```
+
+### 4) 서비스 활성화 및 시작
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now ota
+sudo systemctl enable --now ota-updater
+```
+
+이후 **PC에서 git push만 하면** Pi가 주기적으로 리포를 확인하고, 변경이 있으면 `git pull` 후 웹서버를 자동 재시작합니다. Pi에서 수동으로 재시작할 필요 없습니다.
+
+---
+
+## "전체 커밋 내용" OTA 업데이트(수동 실행 시)
 
 `ota.txt` 같은 단일 파일이 아니라, **리포 전체를 최신 커밋으로 자동 업데이트**하려면 `repo-updater.js`를 사용합니다.
 
-- **동작**: GitHub 브랜치 HEAD 커밋 SHA 폴링 → 변경 감지 → `git pull`(기본) → 종료(재시작 유도)
-- **라즈베리파이 권장**: systemd/pm2로 `npm run updater`를 항상 실행 (업데이트 시 자동 재시작)
+- **동작**: GitHub 브랜치 HEAD 커밋 SHA 폴링 → 변경 감지 → `git pull` → (선택) 서버 재시작 명령 실행
+- **자동 운영**: 위 "라즈베리파이 한 번만 설정"대로 systemd로 두 서비스를 켜두면, push만 해도 Pi에서 알아서 처리됩니다.
 
 실행:
 
@@ -34,7 +84,7 @@ npm run updater
 - `OTA_REPO_POLL_MS`: 리포 폴링 주기(ms). 미설정 시 `OTA_POLL_MS` 사용
 - `OTA_REPO_UPDATE_STRATEGY`: `pull`(기본) 또는 `reset`
 - `OTA_REPO_EXIT_ON_UPDATE`: `1`(기본)면 업데이트 후 exit=42로 종료(감시자가 재시작)
-- `OTA_REPO_POST_UPDATE_CMD`: (선택) 업데이트 직후 실행할 명령어 (예: 서버 재시작)
+- `OTA_REPO_POST_UPDATE_CMD`: (선택) 업데이트 직후 실행할 명령어 (예: `sudo systemctl restart ota`)
 
 ## 설정 (환경변수)
 

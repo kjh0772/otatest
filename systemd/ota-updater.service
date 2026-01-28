@@ -1,0 +1,27 @@
+# 리포 변경 감지 → pull → 웹서버 재시작 (라즈베리파이 등)
+# 변경: push만 하면 Pi에서 알아서 pull + ota 서비스 재시작
+# 사용: ota.service 설치 후, 본인 경로/유저/환경변수 수정 후 복사
+#   sudo cp systemd/ota-updater.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now ota-updater
+# 비밀번호 없이 재시작 허용 (한 번만):
+#   sudo visudo → pi ALL=(ALL) NOPASSWD: /bin/systemctl restart ota
+
+[Unit]
+Description=OTA repo updater (pull + restart ota on change)
+After=network.target ota.service
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/otatest
+Environment=OTA_GH_OWNER=kjh0772
+Environment=OTA_GH_REPO=otatest
+Environment=OTA_GH_BRANCH=main
+Environment=OTA_REPO_POLL_MS=5000
+Environment=OTA_REPO_POST_UPDATE_CMD=sudo systemctl restart ota
+ExecStart=/usr/bin/node repo-updater.js
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

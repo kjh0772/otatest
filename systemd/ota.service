@@ -1,0 +1,25 @@
+# OTA 웹서버 (라즈베리파이 등)
+# 변경: push만 하면 Pi에서 자동 pull+재시작되도록 systemd 예시
+# 사용: 경로/유저/환경변수를 본인 환경에 맞게 수정 후 복사
+#   sudo cp systemd/ota.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now ota
+
+[Unit]
+Description=OTA test web server
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/otatest
+Environment=OTA_GH_OWNER=kjh0772
+Environment=OTA_GH_REPO=otatest
+Environment=OTA_GH_BRANCH=main
+Environment=OTA_GH_PATH=ota.txt
+Environment=OTA_PORT=3000
+ExecStart=/usr/bin/node ota.js
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
