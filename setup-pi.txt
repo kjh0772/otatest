@@ -1,0 +1,51 @@
+# ================================================================================
+# 라즈베리파이 OTA 한 번 설정 (파일 전체 복붙 후 엔터)
+# - 주석(#) 줄은 실행되지 않습니다. 경로/유저가 다르면 주석 안내대로 수동 수정.
+# - 마지막에 "수동 할 일" 주석 블록만 따로 진행하면 됩니다.
+# ================================================================================
+
+# ---------- 1) 프로젝트 클론 ----------
+cd ~
+git clone https://github.com/kjh0772/otatest.git
+cd otatest
+
+# ---------- 2) systemd 유닛 복사 ----------
+sudo cp systemd/ota.service /etc/systemd/system/
+sudo cp systemd/ota-updater.service /etc/systemd/system/
+
+# ---------- 3) 서비스 활성화 및 시작 ----------
+sudo systemctl daemon-reload
+sudo systemctl enable --now ota
+sudo systemctl enable --now ota-updater
+
+# ---------- 4) 동작 확인 ----------
+systemctl status ota
+systemctl status ota-updater
+curl -s http://localhost:3000/version
+
+# ================================================================================
+# [수동 할 일] 아래는 터미널에서 실행되지 않으므로, 한 번만 직접 해주세요.
+# ================================================================================
+# 1) visudo: 비밀번호 없이 ota 재시작 허용
+#    $ sudo visudo
+#    파일 맨 아래에 다음 한 줄 추가 (pi 대신 본인 계정명):
+#    pi ALL=(ALL) NOPASSWD: /bin/systemctl restart ota
+#    저장 후 종료 (nano: Ctrl+O 엔터, Ctrl+X)
+#
+# 2) 경로/유저/리포가 다르면 유닛 파일 수정
+#    $ sudo nano /etc/systemd/system/ota.service
+#    WorkingDirectory= 본인 프로젝트 경로, User= 본인 계정, Environment= 본인 값
+#    $ sudo nano /etc/systemd/system/ota-updater.service
+#    위와 같이 수정 후 저장. 그 다음:
+#    $ sudo systemctl daemon-reload
+#    $ sudo systemctl restart ota
+#    $ sudo systemctl restart ota-updater
+#
+# 이후 PC에서 git push 만 하면 Pi 가 자동으로 pull 후 웹서버 재시작합니다.
+#
+# [시계가 안 나오면] Pi 에서 새 코드가 아직 안 올라온 것. 한 번만 실행:
+#   cd ~/otatest
+#   git pull
+#   sudo systemctl restart ota
+# 그 다음 브라우저에서 새로고침. 탭 제목과 페이지 맨 위에 서버 시각이 보이면 성공.
+# ================================================================================

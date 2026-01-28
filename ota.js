@@ -264,8 +264,13 @@ function startServer(state, config) {
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
     res.end(
       htmlPage({
-        title: "OTA 테스트",
+        title: "OTA 테스트 | " + nowIso(),
         body: `
+          <div class="card" style="margin-bottom:16px; border-color:#eab308; background:rgba(0,0,0,0.95)">
+            <p class="title" style="margin:0 0 4px">서버 시각 (현재)</p>
+            <p style="font-size:20px; font-weight:700; margin:0; letter-spacing:0.02em; font-variant-numeric:tabular-nums" id="serverTime">${escapeHtml(nowIso())}</p>
+            <p class="muted" style="margin:8px 0 0; font-size:12px"><a href="/time">/time</a> · 새로고침 시 갱신</p>
+          </div>
           <div class="card">
             <p class="title">OTA 테스트 웹서버</p>
             <p class="muted">
@@ -304,6 +309,14 @@ function startServer(state, config) {
             <p class="muted">페이지를 켜둔 상태에서 GitHub에 push하면, SSE로 즉시 갱신됩니다.</p>
           </div>
           <script>
+            // 변경: 서버 시각 2초마다 /time 으로 갱신 (시계가 보이면 새 코드 동작 중)
+            (function () {
+              var timeEl = document.getElementById('serverTime');
+              if (timeEl) {
+                function refreshTime() { fetch('/time').then(function(r){ return r.text(); }).then(function(t){ if (t) timeEl.textContent = t; }); }
+                setInterval(refreshTime, 2000);
+              }
+            })();
             // 변경: SSE로 텍스트/로그를 자동 갱신 (새로고침 불필요)
             (function () {
               var textEl = document.getElementById('otaText');
